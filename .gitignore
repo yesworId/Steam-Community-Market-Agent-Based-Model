@@ -1,0 +1,5 @@
+.idea/
+*.iml
+*.xml
+*.pyc
+results_pool.csv
