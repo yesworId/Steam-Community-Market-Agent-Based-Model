@@ -79,15 +79,15 @@ def generate_agents(num_agents: int = 1000, weights: dict = None):
 
 
 def run_simulation():
-    market = Market(market_fee=MARKET_FEE)
+    market = Market(market_fee=MARKET_FEE, steps_per_day=STEPS_PER_DAY)
     agents = generate_agents(NUMBER_OF_AGENTS, AGENT_WEIGHTS)
     market.add_agents(agents)
 
     drop_generator = DropGenerator(
         agents=agents,
+        market=market,
         items_drop_pool=ITEMS_DICT,
         base_drop_chance=BASE_DROP_CHANCE,
-        steps_per_day=STEPS_PER_DAY,
         max_drops_per_week=MAX_DROPS_PER_WEEK
     )
 

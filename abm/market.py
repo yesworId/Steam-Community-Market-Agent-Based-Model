@@ -4,6 +4,7 @@ from collections import defaultdict
 from .models import *
 from .exceptions import *
 from .metrics import calculate_median_price
+from .constants import DEFAULT_BASE_PRICE
 
 
 class Market:
@@ -11,12 +12,24 @@ class Market:
     Simulation environment with its parameters and methods for Agents to interact with.
 
     :param market_fee: Percentage 'Market' charges on any sale.
+    :param steps_per_day: Number of simulation steps per day
+    :param trade_lock_period: Duration of trade restriction for newly acquired items (in simulation days).
     """
-    def __init__(self, agents: list = None, market_fee=0.15):
+    def __init__(
+            self,
+            agents: list = None,
+            market_fee: float = 0.15,
+            steps_per_day: int = 1000,
+            trade_lock_period: int = 0,
+            current_step: int = 0
+    ):
         from .agents import Agent as Agent
 
         self.market_fee: float = market_fee
-        self.current_step: int = 0
+        self.steps_per_day = steps_per_day
+        # TODO: Implement trade lock feature in simulation
+        self.trade_lock_period = trade_lock_period
+        self.current_step = current_step
 
         self.agents: dict[int, Agent] = {}
         self.buy_orders: dict[str, list[Order]] = {}
@@ -35,8 +48,6 @@ class Market:
             agent.market = self
 
     def get_median_price(self, item_name, number_of_sales: int = 30):
-        if number_of_sales <= 0:
-            raise ValueError("Number of sales must be positive")
         return calculate_median_price(self.sales_history, item_name, number_of_sales)
 
     def get_base_price(self, item_name, number_of_sales: int = 30):
@@ -48,8 +59,7 @@ class Market:
         if buy_orders:
             return buy_orders[0].price
 
-        # TODO: Return price based on item rarity
-        return 1
+        return DEFAULT_BASE_PRICE
 
     def get_item_recent_sales(self, item_name: str, number_of_sales: int = 50) -> list[Sale]:
         """Returns list of passed number of recent sales for item_name"""
@@ -149,23 +159,23 @@ class Market:
         else:
             self.sell_orders.setdefault(item_name, []).append(order)
 
-    def cancel_buy_order(self, order_id: int):
-        """Cancel Buy Order on the item"""
-        for item, orders in self.buy_orders.items():
-            for i, order in enumerate(orders):
-                if order.id == order_id:
-                    del orders[i]
-                    return
+    def cancel_buy_order(self, item_name: str, order_id: int):
+        """Cancel Buy Order for given item"""
+        orders = self.buy_orders[item_name]
+        for order in orders:
+            if order.id == order_id:
+                orders.remove(order)
+                return
         raise NoOrderMatch("Buy Order doesn't exist.")
 
-    def cancel_sell_order(self, order_id: int):
-        """Cancel sell order and return remaining items to inventory of an Agent."""
-        for item, orders in self.sell_orders.items():
-            for i, order in enumerate(orders):
-                if order.id == order_id:
-                    self.agents[order.agent_id].add_item(order.item_name, order.quantity)
-                    del orders[i]
-                    return
+    def cancel_sell_order(self, item_name: str, order_id: int):
+        """Cancel sell order and return remaining items to Agent's inventory."""
+        orders = self.sell_orders[item_name]
+        for order in orders:
+            if order.id == order_id:
+                orders.remove(order)
+                self.agents[order.agent_id].add_item(order.item_name, order.quantity)
+                return
         raise NoOrderMatch("Sell Order doesn't exist.")
 
     def _get_matching_sell_orders(
@@ -372,7 +382,7 @@ class Market:
             if buyer.balance < order_total:
                 max_affordable_quantity = int(buyer.balance // buy_order.price)
                 if max_affordable_quantity == 0:
-                    self.cancel_buy_order(buy_order.id)
+                    self.cancel_buy_order(item_name=item_name, order_id=buy_order.id)
                     continue
 
                 # Purchase as many as possible

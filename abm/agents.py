@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from .market import Market
 from .models import AgentType
 from .exceptions import InsufficientBalance, NotEnoughItems, DuplicateBuyOrder
-from .constants import MIN_PRICE, MAX_DISCOUNT, IMPULSIVITY_UNDERESTIMATION, MIN_SALES_FOR_ANALYSIS
+from .constants import MIN_PRICE, MAX_DISCOUNT, IMPULSIVITY_UNDERESTIMATION
 
 
 class Agent(ABC):
@@ -159,7 +159,7 @@ class NoviceAgent(Agent):
                 # self.add_balance(amount=)
                 self.sell_items()
             except DuplicateBuyOrder as ex:
-                self.market.cancel_buy_order(ex.order_id)
+                self.market.cancel_buy_order(item_name=item_name, order_id=ex.order_id)
 
     def sell_items(self):
         """
@@ -278,7 +278,7 @@ class TraderAgent(Agent):
                                     self.entry_prices.setdefault(item_name, []).append(best_ask)
                                     break
                             except DuplicateBuyOrder as ex:
-                                self.market.cancel_buy_order(ex.order_id)
+                                self.market.cancel_buy_order(item_name=item_name, order_id=ex.order_id)
 
 
 class InvestorAgent(Agent):

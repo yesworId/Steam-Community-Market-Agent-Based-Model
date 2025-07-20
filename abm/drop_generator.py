@@ -1,6 +1,9 @@
 import random
 from typing import List
 
+from .market import Market
+from .constants import DEFAULT_NUMBER_OF_ACCOUNTS
+
 
 class DropGenerator:
     """
@@ -8,8 +11,8 @@ class DropGenerator:
     """
     __slots__ = (
         "agents",
+        "market",
         "base_drop_chance",
-        "steps_per_day",
         "reset_day",
         "max_drops_per_week",
         "_eligible",
@@ -21,9 +24,9 @@ class DropGenerator:
     def __init__(
             self,
             agents: List,
+            market: Market,
             items_drop_pool: dict[str, float],
             base_drop_chance: float,
-            steps_per_day: int,
             reset_day: int = 2,
             max_drops_per_week: int = 1
     ):
@@ -31,13 +34,12 @@ class DropGenerator:
         :param agents: List of all Agents
         :param items_drop_pool: Pool of items actively dropping with its probabilities
         :param base_drop_chance: Fixed chance in range of (0-1) to get an item reward
-        :param steps_per_day: Amount of simulation steps per day
         :param reset_day: Index of a day of reset (0-Monday, 1-Tuesday, ..., 6-Sunday)
         :param max_drops_per_week: Maximum Drops each week per Agent
         """
         self.agents = {agent.id: agent for agent in agents}
+        self.market = market
         self.base_drop_chance = base_drop_chance
-        self.steps_per_day = steps_per_day
         self.reset_day = reset_day
         self.max_drops_per_week = max_drops_per_week
 
@@ -50,7 +52,7 @@ class DropGenerator:
 
     def _is_reset_day(self, step: int) -> bool:
         """Checks if it's a day of a Weekly Drop reset."""
-        return (step // self.steps_per_day % 7) == self.reset_day
+        return (step // self.market.steps_per_day % 7) == self.reset_day
 
     def _reset_eligibility(self):
         """Reset eligibility for all agents. Used for weekly reset."""
@@ -66,8 +68,8 @@ class DropGenerator:
         return min(winners_count, eligible_count)
 
     def _select_winners(self, count: int) -> List:
-        """Selects random Agents that received a Weekly Drop."""
-        # TODO: GIVE DROP ONLY TO ELIGIBLE AGENTS, WHO ALSO ARE PLAYED THE GAME
+        """Selects random Agents to receive a Weekly Drop Reward."""
+        # TODO: GIVE DROP ONLY TO ELIGIBLE AGENTS, WHO ALSO HAVE PLAYED THE GAME
         if count <= 0 or not self._eligible:
             return []
 
@@ -95,14 +97,14 @@ class DropGenerator:
 
     def calculate_drop_quantity(self, agent) -> int:
         """Calculates drop quantity based on number of accounts Agent has."""
-        return self.max_drops_per_week * getattr(agent, 'number_of_accounts', 1)
+        return self.max_drops_per_week * getattr(agent, 'number_of_accounts', DEFAULT_NUMBER_OF_ACCOUNTS)
 
     def tick(self, step: int):
         """
         Performs Drop once per simulated day. Each week at the set day resets limit of a given drop for all Agents.
         """
         # Check if it's an end of a day
-        if step % self.steps_per_day != 0:
+        if step % self.market.steps_per_day != 0:
             return
 
         if self._is_reset_day(step):

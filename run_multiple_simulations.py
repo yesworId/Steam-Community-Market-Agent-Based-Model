@@ -86,15 +86,15 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed)
 
-    market = Market(market_fee=market_fee)
+    market = Market(market_fee=market_fee, steps_per_day=STEPS_PER_DAY)
     agents = generate_agents(market, rng, np_rng, num_agents=NUMBER_OF_AGENTS, weights=AGENT_WEIGHTS)
     market.add_agents(agents)
 
     drop_generator = DropGenerator(
         agents=agents,
+        market=market,
         items_drop_pool=ITEMS_DICT,
         base_drop_chance=BASE_DROP_CHANCE,
-        steps_per_day=STEPS_PER_DAY,
         max_drops_per_week=MAX_DROPS_PER_WEEK
     )
 
