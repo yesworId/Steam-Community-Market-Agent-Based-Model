@@ -1,4 +1,5 @@
 from collections import defaultdict
+from sortedcontainers import SortedList
 
 from .models import *
 from .exceptions import *
@@ -11,8 +12,9 @@ class Market:
     Simulation environment with its parameters and methods for Agents to interact with.
 
     :param market_fee: Percentage 'Market' charges on any sale.
-    :param steps_per_day: Number of simulation steps per day
+    :param steps_per_day: Number of simulation steps per day.
     :param trade_lock_period: Duration of trade restriction for newly acquired items (in simulation days).
+    :param current_step: Counter of simulation steps.
     """
     def __init__(
             self,
@@ -31,8 +33,12 @@ class Market:
         self.current_step = current_step
 
         self.agents: dict[int, Agent] = {}
-        self.buy_orders: dict[str, list[Order]] = {}
-        self.sell_orders: dict[str, list[Order]] = {}
+        self.buy_orders: defaultdict[str, SortedList[Order]] = defaultdict(
+            lambda: SortedList(key=lambda o: (-o.price, o.step))
+        )
+        self.sell_orders: defaultdict[str, SortedList[Order]] = defaultdict(
+            lambda: SortedList(key=lambda o: (o.price, o.step))
+        )
 
         self.sales_history: defaultdict[str, list[Sale]] = defaultdict(list)
 
@@ -125,17 +131,11 @@ class Market:
 
     def get_item_buy_orders(self, item_name: str):
         """Get Buy Orders for an item sorted by price from the highest and current_step"""
-        return sorted(
-            self.buy_orders.get(item_name, []),
-            key=lambda order: (-order.price, order.step)
-        )
+        return self.buy_orders.get(item_name, [])
 
     def get_item_sell_orders(self, item_name: str):
         """Get Sell Orders for an item sorted by price from the lowest and current_step"""
-        return sorted(
-            self.sell_orders.get(item_name, []),
-            key=lambda order: (order.price, order.step)
-        )
+        return self.sell_orders.get(item_name, [])
 
     def create_order(
             self,
@@ -154,9 +154,9 @@ class Market:
             step=self.current_step
         )
         if order_type == OrderType.BUY:
-            self.buy_orders.setdefault(item_name, []).append(order)
+            self.buy_orders[order.item_name].add(order)
         else:
-            self.sell_orders.setdefault(item_name, []).append(order)
+            self.sell_orders[order.item_name].add(order)
 
     def cancel_buy_order(self, item_name: str, order_id: int):
         """Cancel Buy Order for given item"""
@@ -189,12 +189,13 @@ class Market:
         Optional: Excludes orders created by a specific agent preventing self-trading.
         """
 
-        return sorted(
-            [
-                order for order in self.sell_orders.get(item_name, [])
-                if order.price <= price and (exclude_agent_id is None or order.agent_id != exclude_agent_id)
-            ], key=lambda order: (order.price, order.step)
-        )
+        sell_orders = self.sell_orders.get(item_name, ())
+        dummy = Order(type=OrderType.SELL, item_name=item_name, price=price, quantity=0, agent_id=-1, step=100_000_000)
+        idx = sell_orders.bisect_right(dummy)
+        return [
+            order for order in sell_orders[:idx]
+            if exclude_agent_id is None or order.agent_id != exclude_agent_id
+        ]
 
     def _get_matching_buy_orders(
             self,
@@ -208,12 +209,14 @@ class Market:
         Optional: Excludes orders created by a specific agent preventing self-trading.
         """
 
-        return sorted(
-            [
-                order for order in self.buy_orders.get(item_name, [])
-                if order.price >= price and (exclude_agent_id is None or order.agent_id != exclude_agent_id)
-            ], key=lambda order: (order.step, -order.price)
-        )
+        buy_orders = self.buy_orders[item_name]
+        dummy = Order(type=OrderType.BUY, item_name=item_name, price=price, quantity=0, agent_id=-1, step=100_000_000)
+        idx = buy_orders.bisect_left(dummy)
+        matching_orders = [
+            order for order in buy_orders[:idx]
+            if exclude_agent_id is None or order.agent_id != exclude_agent_id
+        ]
+        return sorted(matching_orders, key=lambda o: o.step)
 
     def add_sale(
             self,
