@@ -23,7 +23,7 @@ _sale_id = itertools.count()
 class Order:
     type: OrderType
     item_name: str
-    price: float
+    price: int
     quantity: int
     agent_id: int
     step: int
@@ -33,8 +33,8 @@ class Order:
 @dataclass
 class Sale:
     item_name: str
-    price: float
-    fee: float
+    price: int
+    fee: int
     quantity: int
     buyer_id: int
     seller_id: int

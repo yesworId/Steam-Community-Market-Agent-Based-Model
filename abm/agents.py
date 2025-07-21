@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from .market import Market
 from .models import AgentType
 from .exceptions import InsufficientBalance, NotEnoughItems, DuplicateBuyOrder
-from .constants import MIN_PRICE, MAX_DISCOUNT, IMPULSIVITY_UNDERESTIMATION
+from .constants import ONE_CENT, ONE_DOLLAR, MIN_PRICE, MAX_DISCOUNT, IMPULSIVITY_UNDERESTIMATION
 
 
 class Agent(ABC):
@@ -26,7 +26,7 @@ class Agent(ABC):
             agent_id: int,
             market: Market,
             agent_type: AgentType,
-            balance: float = 0.0,
+            balance: int = 0,
             impulsivity: float = 0.0
     ):
         self.id = agent_id
@@ -40,7 +40,7 @@ class Agent(ABC):
     def act(self):
         raise NotImplementedError("This method is implemented in sub-classes")
 
-    def add_balance(self, amount: float = 0.0):
+    def add_balance(self, amount: int = 0):
         if amount > 0:
             self.balance += amount
 
@@ -64,8 +64,8 @@ class Agent(ABC):
                 continue
 
             highest_price = buy_orders[0].price
-            price = random.uniform(highest_price * 0.7, highest_price) or MIN_PRICE
-            self.market.sell(self.id, item_name, round(price, 2), quantity)
+            price = int(random.uniform(highest_price * 0.7, highest_price))
+            self.market.sell(self.id, item_name, max(price, MIN_PRICE), quantity)
 
     def open_container(self, item_name, quantity=1):
         """
@@ -179,13 +179,13 @@ class NoviceAgent(Agent):
         sell_orders = self.market.get_item_sell_orders(item_name)
         if sell_orders:
             lowest_sell_order = sell_orders[0].price
-            price = max(lowest_sell_order - random.uniform(0.01, 0.15), MIN_PRICE)
+            price = lowest_sell_order - random.randint(ONE_CENT, ONE_DOLLAR)
         else:
             # Pick base price
             base_price = self.market.get_base_price(item_name)
-            price = max(base_price * random.uniform(0.95, 1.05), MIN_PRICE)
+            price = int(base_price * random.uniform(0.95, 1.05))
 
-        self.market.sell(self.id, item_name, round(price, 2), quantity)
+        self.market.sell(self.id, item_name, max(price, MIN_PRICE), quantity)
 
 
 class TraderAgent(Agent):
@@ -243,7 +243,7 @@ class TraderAgent(Agent):
                         if highest_price >= desired_price:
                             quantity = self.inventory[item_name]
                             try:
-                                self.market.sell(self.id, item_name, round(highest_price, 2), quantity)
+                                self.market.sell(self.id, item_name, highest_price, quantity)
                                 self.entry_prices[item_name] = []
                                 profitable = True
                             except Exception as ex:
@@ -295,7 +295,7 @@ class InvestorAgent(Agent):
     def __init__(self, agent_id, market, agent_type, balance, impulsivity, risk_tolerance):
         super().__init__(agent_id, market, agent_type, balance, impulsivity)
         self.risk_tolerance = risk_tolerance
-        self.entry_prices: dict[str, dict[str, float]] = {}
+        self.entry_prices: dict[str, dict[str, int]] = {}
 
     def act(self):
         """
@@ -326,11 +326,11 @@ class InvestorAgent(Agent):
 
         by_item = {}
         for p in purchases:
-            info = by_item.setdefault(p.item_name, {'bought_qty': 0, 'bought_cost': 0.0, 'sold_qty': 0})
+            info = by_item.setdefault(p.item_name, {'bought_qty': 0, 'bought_cost': 0, 'sold_qty': 0})
             info['bought_qty'] += p.quantity
             info['bought_cost'] += p.quantity * p.price
         for s in sales:
-            info = by_item.setdefault(s.item_name, {'bought_qty': 0, 'bought_cost': 0.0, 'sold_qty': 0})
+            info = by_item.setdefault(s.item_name, {'bought_qty': 0, 'bought_cost': 0, 'sold_qty': 0})
             info['sold_qty'] += s.quantity
 
         new_entry = {}
@@ -350,7 +350,7 @@ class InvestorAgent(Agent):
 
             new_entry[item] = {
                 'qty': net_qty,
-                'avg_price': round(total_cost / net_qty, 2)
+                'avg_price': int(total_cost / net_qty)
             }
 
         self.entry_prices = new_entry
@@ -397,12 +397,12 @@ class InvestorAgent(Agent):
         # Check sales for last week and pick price lower than the cheapest from the history
         lowest_price = sell_orders[0].price
         discount = (1 - self.risk_tolerance) * MAX_DISCOUNT
-        price = round(lowest_price * (1 - discount), 2) or MIN_PRICE
+        price = int(lowest_price * (1 - discount))
         quantity = int(self.balance * self.risk_tolerance // price)
 
         if quantity > 0:
             try:
-                self.market.buy(self.id, item_name, price, quantity)
+                self.market.buy(self.id, item_name, max(price, MIN_PRICE), quantity)
             except DuplicateBuyOrder:
                 pass
 
@@ -444,9 +444,9 @@ class FarmerAgent(Agent):
                     break
 
                 # Multiply based on popularity?
-                price = base_price * random.uniform(0.9, 1.1)
+                price = int(base_price * random.uniform(0.9, 1.1))
                 try:
-                    self.market.sell(self.id, item_name, round(price, 2), batch_size)
+                    self.market.sell(self.id, item_name, max(price, MIN_PRICE), batch_size)
                     remaining_quantity -= batch_size
                 except NotEnoughItems:
                     break

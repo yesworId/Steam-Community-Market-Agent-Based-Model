@@ -63,7 +63,7 @@ def generate_agents(market, rng, np_rng, num_agents=1000, weights=None):
     agents = []
     for i in range(num_agents):
         agent_type = rng.choices(types, weights=probs, k=1)[0]
-        balance = float(balances[i])
+        balance = int(balances[i] * 100)
         impulsivity = rng.random()
 
         if agent_type == AgentType.NOVICE:

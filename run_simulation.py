@@ -59,7 +59,7 @@ def generate_agents(num_agents: int = 1000, weights: dict = None):
     agents = []
     for i in range(num_agents):
         agent_type = random.choices(types, weights=probs, k=1)[0]
-        balance = float(balances[i])
+        balance = int(balances[i] * 100)
         impulsivity = random.random()
 
         if agent_type == AgentType.NOVICE:

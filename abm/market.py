@@ -1,4 +1,3 @@
-import math
 from collections import defaultdict
 
 from .models import *
@@ -25,7 +24,7 @@ class Market:
     ):
         from .agents import Agent as Agent
 
-        self.market_fee: float = market_fee
+        self.market_fee = market_fee
         self.steps_per_day = steps_per_day
         # TODO: Implement trade lock feature in simulation
         self.trade_lock_period = trade_lock_period
@@ -47,10 +46,10 @@ class Market:
             self.agents[agent.id] = agent
             agent.market = self
 
-    def get_median_price(self, item_name, number_of_sales: int = 30):
+    def get_median_price(self, item_name, number_of_sales: int = 30) -> int:
         return calculate_median_price(self.sales_history, item_name, number_of_sales)
 
-    def get_base_price(self, item_name, number_of_sales: int = 30):
+    def get_base_price(self, item_name, number_of_sales: int = 30) -> int:
         median_price = calculate_median_price(self.sales_history, item_name, number_of_sales)
         if median_price > 0:
             return median_price
@@ -142,7 +141,7 @@ class Market:
             self,
             order_type: OrderType,
             item_name: str,
-            price: float,
+            price: int,
             quantity: int,
             agent_id: int
     ):
@@ -181,7 +180,7 @@ class Market:
     def _get_matching_sell_orders(
             self,
             item_name: str,
-            price: float,
+            price: int,
             exclude_agent_id: int | None = None
     ):
         """
@@ -200,7 +199,7 @@ class Market:
     def _get_matching_buy_orders(
             self,
             item_name: str,
-            price: float,
+            price: int,
             exclude_agent_id: int | None = None
     ):
         """
@@ -219,8 +218,8 @@ class Market:
     def add_sale(
             self,
             item_name: str,
-            price: float,
-            fee: float,
+            price: int,
+            fee: int,
             quantity: int,
             buyer_id: int,
             seller_id: int
@@ -240,7 +239,7 @@ class Market:
         """Returns an Agent instance by passed agent_id"""
         return self.agents.get(agent_id)
 
-    def get_agent_balance(self, agent_id: int) -> float:
+    def get_agent_balance(self, agent_id: int) -> int:
         """Returns balance of an Agent by passed agent_id"""
         agent = self._get_agent_by_id(agent_id)
         if not agent:
@@ -277,7 +276,7 @@ class Market:
         self,
         buyer_id: int,
         item_name: str,
-        order_price: float,
+        order_price: int,
         quantity: int
     ):
         """
@@ -288,7 +287,6 @@ class Market:
         :raise DuplicateBuyOrder: If the Agent already has an active Buy Order for the same Item.
         :raise InsufficientBalance: If the Agent does not have enough balance to buy the Item.
         """
-        order_price = math.floor(order_price * 100) / 100.0
 
         buyer = self.agents.get(buyer_id)
         if not buyer:
@@ -315,7 +313,7 @@ class Market:
 
             trade_quantity = min(sell_order.quantity, remaining_quantity)
             order_total = sell_order.price * trade_quantity
-            fee = round(order_total * self.market_fee, 2)
+            fee = int(order_total * self.market_fee)
 
             # Add up money to the seller and subtract from buyer
             seller = self.agents.get(sell_order.agent_id)
@@ -346,7 +344,7 @@ class Market:
             self,
             seller_id: int,
             item_name: str,
-            order_price: float,
+            order_price: int,
             quantity: int
     ):
         """
@@ -355,7 +353,6 @@ class Market:
         :raise AgentDoesNotExist: If the Agent with the given ID does not exist in the system.
         :raise NotEnoughItems: If the Agent does not have enough items in its inventory to sell.
         """
-        order_price = math.floor(order_price * 100) / 100.0
 
         seller = self._get_agent_by_id(seller_id)
         if not seller:
@@ -374,7 +371,7 @@ class Market:
 
             trade_quantity = min(buy_order.quantity, remaining_quantity)
             order_total = order_price * trade_quantity
-            fee = round(order_price * self.market_fee, 2)
+            fee = int(order_price * self.market_fee)
 
             buyer = self._get_agent_by_id(buy_order.agent_id)
 
@@ -387,7 +384,7 @@ class Market:
 
                 # Purchase as many as possible
                 order_total = buy_order.price * max_affordable_quantity
-                fee = round(order_total * self.market_fee, 2)
+                fee = int(order_total * self.market_fee)
 
             seller.balance += order_total - fee
             buyer.balance -= order_total

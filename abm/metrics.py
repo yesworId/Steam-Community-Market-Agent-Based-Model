@@ -1,5 +1,7 @@
 from statistics import median
 
+from .constants import ONE_DOLLAR
+
 
 # TODO: Calculate agent profits, number of active agents, volatility, ...
 # Number of Active agents - Agents that had at least one active market action in past N days.
@@ -11,36 +13,39 @@ from statistics import median
 # Demand / Supply ratio = (Demand / Supply - 1) * 100
 # Popularity
 
-def calculate_median_price(sales_history, item_name: str, number_of_sales: int) -> float:
+def calculate_median_price(sales_history, item_name: str, number_of_sales: int) -> int:
     """Calculates median price for given item on number of sales."""
+    if number_of_sales <= 0:
+        raise ValueError("Number of sales must be positive")
+
     item_sales = sales_history.get(item_name, [])
-    if not item_sales or number_of_sales <= 0:
-        return 0.0
+    if not item_sales:
+        return 0
 
     prices = [sale.price for sale in item_sales[-number_of_sales:]]
     if not prices:
-        return 0.0
+        return 0
 
-    return float(median(prices))
+    return int(median(prices))
 
 
-def calculate_weighted_mean_price(sales_history, item_name: str, number_of_sales: int) -> float:
+def calculate_weighted_mean_price(sales_history, item_name: str, number_of_sales: int) -> int:
     item_sales = sales_history.get(item_name, [])
     if not item_sales:
-        return 0.0
+        return 0
     item_sales = item_sales[-number_of_sales:]
 
     total_qty = sum(sale.quantity for sale in item_sales)
     if total_qty == 0:
-        return 0.0
+        return 0
 
     weighted_sum = sum(sale.price * sale.quantity for sale in item_sales)
-    return weighted_sum / total_qty
+    return int(weighted_sum / total_qty)
 
 
 def calculate_total_fee(sales_history) -> float:
     """Calculates the total fee earned for all sales."""
-    return sum(sale.fee for history in sales_history.values() for sale in history)
+    return sum(sale.fee for history in sales_history.values() for sale in history) / ONE_DOLLAR
 
 
 def calculate_sales_volume(sales_history, item_name: str, steps_per_day: int = 1000, period: str = "day") -> int:

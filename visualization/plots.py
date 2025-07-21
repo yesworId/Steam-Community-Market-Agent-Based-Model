@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from abm.constants import ONE_DOLLAR
+
 
 def agent_balance_histogram(agents: list, bins: int = 20):
     """
@@ -9,7 +11,7 @@ def agent_balance_histogram(agents: list, bins: int = 20):
     :param agents: List of agent instances.
     :param bins: Number of bins in the histogram (default 30).
     """
-    balances = [agent.balance for agent in agents]
+    balances = [agent.balance / ONE_DOLLAR for agent in agents]
 
     plt.figure(figsize=(8, 4))
     plt.hist(balances, bins=bins, color="tab:blue", edgecolor="black", alpha=0.7)
@@ -34,7 +36,7 @@ def plot_sales_history(sales_history, item_name: str, show_volume: bool = False,
         return
 
     steps = np.array([sale.step for sale in item_sales])
-    prices = np.array([sale.price for sale in item_sales])
+    prices = np.array([sale.price for sale in item_sales]) / ONE_DOLLAR
     quantities = np.array([sale.quantity for sale in item_sales])
 
     sort_indices = np.argsort(steps)
@@ -107,7 +109,7 @@ def plot_order_book(market, item_name: str):
         return
 
     if buy_list:
-        buy_prices = np.array([o.price for o in buy_list])
+        buy_prices = np.array([o.price for o in buy_list]) / ONE_DOLLAR
         buy_qtys = np.array([o.quantity for o in buy_list])
 
         idx_buy = np.argsort(-buy_prices)
@@ -119,7 +121,7 @@ def plot_order_book(market, item_name: str):
         buy_cumulative = np.array([])
 
     if sell_list:
-        sell_prices = np.array([o.price for o in sell_list])
+        sell_prices = np.array([o.price for o in sell_list]) / ONE_DOLLAR
         sell_qtys = np.array([o.quantity for o in sell_list])
         idx_sell = np.argsort(sell_prices)
         sell_prices_sorted = sell_prices[idx_sell]
