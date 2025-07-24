@@ -4,17 +4,18 @@ import matplotlib.pyplot as plt
 from abm.constants import ONE_DOLLAR
 
 
-def agent_balance_histogram(agents: list, bins: int = 20):
+def agent_balance_histogram(agents: list, bin_width: int = 100):
     """
     Plot a histogram of agent balances.
 
-    :param agents: List of agent instances.
-    :param bins: Number of bins in the histogram (default 30).
+    :param agents: List of Agent instances.
+    :param bin_width: Width of each bin, by default in hundreds.
     """
     balances = [agent.balance / ONE_DOLLAR for agent in agents]
+    bin_edges = np.arange(0, int(max(balances) // bin_width + 2) * bin_width, bin_width)
 
     plt.figure(figsize=(8, 4))
-    plt.hist(balances, bins=bins, color="tab:blue", edgecolor="black", alpha=0.7)
+    plt.hist(balances, bins=bin_edges, color="tab:blue", edgecolor="black", alpha=0.7)
     plt.xlabel("Agent Balances")
     plt.ylabel("Number of Agents")
     plt.title("Distribution of Agent Balances")

@@ -397,12 +397,12 @@ class InvestorAgent(Agent):
         # Check sales for last week and pick price lower than the cheapest from the history
         lowest_price = sell_orders[0].price
         discount = (1 - self.risk_tolerance) * MAX_DISCOUNT
-        price = int(lowest_price * (1 - discount))
+        price = max(int(lowest_price * (1 - discount)), MIN_PRICE)
         quantity = int(self.balance * self.risk_tolerance // price)
 
         if quantity > 0:
             try:
-                self.market.buy(self.id, item_name, max(price, MIN_PRICE), quantity)
+                self.market.buy(self.id, item_name, price, quantity)
             except DuplicateBuyOrder:
                 pass
 

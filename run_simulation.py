@@ -91,7 +91,7 @@ def run_simulation():
         max_drops_per_week=MAX_DROPS_PER_WEEK
     )
 
-    # plots.agent_balance_histogram(agents, bins=int(NUMBER_OF_AGENTS / 100))
+    # plots.agent_balance_histogram(agents)
 
     for step in range(NUMBER_OF_STEPS):
         market.current_step = step
@@ -107,7 +107,7 @@ def run_simulation():
     plots.plot_order_book(market, 'Item A')
     # plots.plot_sales_history(market.sales_history, item_name='Item A', steps_per_day=STEPS_PER_DAY, show_volume=True)
 
-    # plots.agent_balance_histogram(agents, bins=int(NUMBER_OF_AGENTS / 100))
+    # plots.agent_balance_histogram(agents)
 
 
 if __name__ == "__main__":

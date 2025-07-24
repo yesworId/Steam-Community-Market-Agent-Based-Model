@@ -1,26 +1,22 @@
-# Market:
+# Market
 
-The **Market** class simulates real-life trading environment - [Steam Community Market](https://steamcommunity.com/market/). It executes proper order matching based on price and "FCFS" method, records sales history, and charges a fee on each transaction.
+`Market` class simulates real-life trading environment - [Steam Community Market](https://steamcommunity.com/market/). 
+It serves as a central trading system, where `Agents` interact with each other. 
+This class completely simulates real mechanisms and business logic on Steam Community Market: 
 
-```python
-class Market:
-    """
-    Simulation environment with its parameters and methods for Agents to interact with.
+* sorts `Orders` in correct order.
+* returns list of `Orders` of given type or list of recent `Sales` for specific item.
+* matches `Orders` based on price and "*first come, first served*" principle.
+* validates purchase, does all monetary calculations, balance updates and item transfer.
+* records history of every `Sale`.
 
-    :param market_fee: Percentage 'Market' charges on any sale.
-    """
-    def __init__(self, agents: list = None, market_fee=0.15):
-        from .agents import Agent as Agent
+## Parameters:
+- `agents`: List of `Agents`.
+- `market_fee`: Percentage, which `Market` charges on every Sale.
+- `steps_per_day`: Number of simulation steps in one day.
+- `trade_lock_period`: Duration of trade restriction for newly acquired items (in simulation days).
+- `current_step`: Counter of simulation steps.
 
-        self.market_fee: float = market_fee
-        self.current_step: int = 0
-
-        self.agents: dict[int, Agent] = {}
-        self.buy_orders: dict[str, list[Order]] = {}
-        self.sell_orders: dict[str, list[Order]] = {}
-
-        self.sales_history: defaultdict[str, list[Sale]] = defaultdict(list)
-
-        if agents:
-            self.add_agents(agents)
-```
+Buy and Sell `Orders` are stored in `SortedList` data structure. 
+It automatically sorts them in corresponding order and allows quickly filter or access them.
+Each completed market transaction is recorded in `sales_history` dictionary with list of sales for each Item.

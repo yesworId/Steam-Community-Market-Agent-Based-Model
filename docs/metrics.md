@@ -1,35 +1,43 @@
-# Metrics - !unfinished!
+# Metrics
 
-**Median price**
+This module contains utility functions to gather various statistics within the simulation such as price trend,
+fee revenue or volume of sales for a given period.
+
+
+### Median price:
 
 ```python
-def calculate_median_price(sales_history, item_name: str, number_of_sales: int) -> float:
-    """Calculates median price for given item on number of sales."""
-    prices = [sale.price for sale in sales_history if sale.item_name == item_name]
-    if not prices:
-        return 0.0
+def calculate_median_price(sales_history, item_name: str, number_of_sales: int) -> int:
+    """Returns median price of the most recent `number_of_sales` sales for a specific item"""
+    if number_of_sales <= 0:
+        raise ValueError("Number of sales must be positive")
 
-    return float(median(prices[-number_of_sales:]))
+    item_sales = sales_history.get(item_name, [])
+    if not item_sales:
+        return 0
+
+    return int(median([sale.price for sale in item_sales[-number_of_sales:]]))
 ```
 
 
-**Total Earned Fee**
+### Total Earned Fee:
 
 ```python
 def calculate_total_fee(sales_history) -> float:
-    """Calculates the total fee earned for all sales."""
-    return sum(sale.fee for sale in sales_history)
+    """Returns total fee earned for all sales."""
+    return sum(sale.fee for history in sales_history.values() for sale in history) / ONE_DOLLAR
 ```
 
 
-**Sales volume**
+### Sales volume:
 
 ```python
-def calculate_sales_volume(sales_history, steps_per_day: int = 1000, period: str = "day") -> int:
+def calculate_sales_volume(sales_history, item_name: str, steps_per_day: int = 1000, period: str = "day") -> int:
     """
-    Calculate the total quantity of items sold over a specified time period.
+    Return the total quantity of items sold over a specified time period.
 
     :param sales_history: List with records of all past sales
+    :param item_name: Name of the Item
     :param steps_per_day: Number of simulation steps that correspond to one Day
     :param period: Chosen period of recent sales ("day", "week", or "month")
 
@@ -37,10 +45,11 @@ def calculate_sales_volume(sales_history, steps_per_day: int = 1000, period: str
 
     :raises ValueError: if period is not one of "day", "week", or "month"
     """
-    if not sales_history:
+    item_sales = sales_history.get(item_name, [])
+    if not item_sales:
         return 0
 
-    latest_step = max(sale.step for sale in sales_history)
+    latest_step = max(sale.step for sale in item_sales)
 
     if period == "day":
         time_threshold = latest_step - steps_per_day
@@ -49,11 +58,11 @@ def calculate_sales_volume(sales_history, steps_per_day: int = 1000, period: str
     elif period == "month":
         time_threshold = latest_step - steps_per_day * 30
     else:
-        raise ValueError("Wrong period! Please use 'day', 'week' or 'month'.")
+        raise ValueError("Wrong time period! Please use 'day', 'week' or 'month'.")
 
     return sum(
         sale.quantity
-        for sale in sales_history
+        for sale in item_sales
         if sale.step >= time_threshold
     )
 ```

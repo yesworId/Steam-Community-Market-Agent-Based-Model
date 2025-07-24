@@ -14,7 +14,7 @@ from .constants import ONE_DOLLAR
 # Popularity
 
 def calculate_median_price(sales_history, item_name: str, number_of_sales: int) -> int:
-    """Calculates median price for given item on number of sales."""
+    """Returns median price of the most recent number of sales for a specific item"""
     if number_of_sales <= 0:
         raise ValueError("Number of sales must be positive")
 
@@ -22,35 +22,29 @@ def calculate_median_price(sales_history, item_name: str, number_of_sales: int) 
     if not item_sales:
         return 0
 
-    prices = [sale.price for sale in item_sales[-number_of_sales:]]
-    if not prices:
-        return 0
-
-    return int(median(prices))
+    return int(median([sale.price for sale in item_sales[-number_of_sales:]]))
 
 
 def calculate_weighted_mean_price(sales_history, item_name: str, number_of_sales: int) -> int:
     item_sales = sales_history.get(item_name, [])
     if not item_sales:
         return 0
+
     item_sales = item_sales[-number_of_sales:]
-
     total_qty = sum(sale.quantity for sale in item_sales)
-    if total_qty == 0:
-        return 0
-
     weighted_sum = sum(sale.price * sale.quantity for sale in item_sales)
+
     return int(weighted_sum / total_qty)
 
 
 def calculate_total_fee(sales_history) -> float:
-    """Calculates the total fee earned for all sales."""
+    """Returns total fee earned for all sales."""
     return sum(sale.fee for history in sales_history.values() for sale in history) / ONE_DOLLAR
 
 
 def calculate_sales_volume(sales_history, item_name: str, steps_per_day: int = 1000, period: str = "day") -> int:
     """
-    Calculate the total quantity of items sold over a specified time period.
+    Return the total quantity of items sold over a specified time period.
 
     :param sales_history: List with records of all past sales
     :param item_name: Name of the Item
@@ -74,7 +68,7 @@ def calculate_sales_volume(sales_history, item_name: str, steps_per_day: int = 1
     elif period == "month":
         time_threshold = latest_step - steps_per_day * 30
     else:
-        raise ValueError("Wrong period! Please use 'day', 'week' or 'month'.")
+        raise ValueError("Wrong time period! Please use 'day', 'week' or 'month'.")
 
     return sum(
         sale.quantity

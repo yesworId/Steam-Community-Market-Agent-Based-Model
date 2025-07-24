@@ -1,10 +1,16 @@
 from collections import defaultdict
 from sortedcontainers import SortedList
 
-from .models import *
-from .exceptions import *
+from .models import OrderType, Order, Sale
 from .metrics import calculate_median_price
 from .constants import DEFAULT_BASE_PRICE
+from .exceptions import (
+    NotEnoughItems,
+    AgentDoesNotExist,
+    InsufficientBalance,
+    NoOrderMatch,
+    DuplicateBuyOrder
+)
 
 
 class Market:
