@@ -23,16 +23,16 @@ def agent_balance_histogram(agents: list, bin_width: int = 100):
     plt.show()
 
 
-def plot_sales_history(sales_history, item_name: str, show_volume: bool = False, steps_per_day: int = 1000):
+def plot_sales_history(sales_history, market_hash_name: str, steps_per_day: int = 1000, show_volume: bool = False):
     """
     Plots sales history. If show_volume equal True, adds vertical bars of daily sold volume.
 
     :param sales_history: List with records of all past sales
-    :param item_name: Name of the Item
-    :param show_volume: If True, add histogram with sold quantity per day
+    :param market_hash_name: Market name of the Item
     :param steps_per_day: Number of simulation steps that correspond to one Day
+    :param show_volume: If True, add histogram with sold quantity per day
     """
-    item_sales = sales_history.get(item_name, [])
+    item_sales = sales_history.get(market_hash_name, [])
     if not item_sales:
         return
 
@@ -95,18 +95,18 @@ def plot_sales_history(sales_history, item_name: str, show_volume: bool = False,
     plt.show()
 
 
-def plot_order_book(market, item_name: str):
+def plot_order_book(market, market_hash_name: str):
     """
-    Plot cumulative Order Book for passed item_name.
+    Plot cumulative Order Book for passed market_hash_name.
 
     :param market: 'Market' instance, where Buy/Sell orders are stored.
-    :param item_name: Item name.
+    :param market_hash_name: Market name of the Item.
     """
-    buy_list = market.buy_orders.get(item_name, [])
-    sell_list = market.sell_orders.get(item_name, [])
+    buy_list = market.buy_orders.get(market_hash_name, [])
+    sell_list = market.sell_orders.get(market_hash_name, [])
 
     if (not buy_list) and (not sell_list):
-        print(f"No buy or sell orders found for item '{item_name}'.")
+        print(f"No buy or sell orders found for item '{market_hash_name}'.")
         return
 
     if buy_list:
@@ -156,7 +156,7 @@ def plot_order_book(market, item_name: str):
 
     ax.set_xlabel("Price")
     ax.set_ylabel("Cumulative Quantity")
-    ax.set_title(f"Order Book Depth for '{item_name}'")
+    ax.set_title(f"Order Book Depth for '{market_hash_name}'")
     ax.grid(True, linestyle="--", alpha=0.5)
     ax.legend(loc="upper left")
     plt.tight_layout()

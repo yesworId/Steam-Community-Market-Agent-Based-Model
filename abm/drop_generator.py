@@ -1,13 +1,20 @@
 import random
-from typing import List
 
 from .market import Market
 from .constants import DEFAULT_NUMBER_OF_ACCOUNTS
+from .models import MarketItem
 
 
 class DropGenerator:
     """
     Drop Generator imitates CS2 Weekly Drop System. Rewards Agents that play the game with an item.
+
+    :param agents: List of all Agents
+    :param items_drop_pool: Pool of items actively dropping with its probabilities
+    :param base_drop_chance: Fixed chance in range of (0-1) to get an item reward
+    :param reset_day: Index of a day of reset (0-Monday, 1-Tuesday, ..., 6-Sunday)
+    :param max_drops_per_week: Maximum Drops each week per Agent
+    :param trade_lock_on: Apply Trade Restriction on given Weekly Rewards or not
     """
     __slots__ = (
         "agents",
@@ -15,6 +22,7 @@ class DropGenerator:
         "base_drop_chance",
         "reset_day",
         "max_drops_per_week",
+        "trade_lock_on",
         "_eligible",
         "_items_list",
         "_weights_list",
@@ -23,25 +31,20 @@ class DropGenerator:
 
     def __init__(
             self,
-            agents: List,
+            agents: list,
             market: Market,
-            items_drop_pool: dict[str, float],
+            items_drop_pool: dict[MarketItem, float],
             base_drop_chance: float,
             reset_day: int = 2,
-            max_drops_per_week: int = 1
+            max_drops_per_week: int = 1,
+            trade_lock_on: bool = True
     ):
-        """
-        :param agents: List of all Agents
-        :param items_drop_pool: Pool of items actively dropping with its probabilities
-        :param base_drop_chance: Fixed chance in range of (0-1) to get an item reward
-        :param reset_day: Index of a day of reset (0-Monday, 1-Tuesday, ..., 6-Sunday)
-        :param max_drops_per_week: Maximum Drops each week per Agent
-        """
         self.agents = {agent.id: agent for agent in agents}
         self.market = market
         self.base_drop_chance = base_drop_chance
         self.reset_day = reset_day
         self.max_drops_per_week = max_drops_per_week
+        self.trade_lock_on = trade_lock_on
 
         self._eligible = set(agent.id for agent in agents)
 
@@ -67,7 +70,7 @@ class DropGenerator:
         winners_count = int(eligible_count * self.base_drop_chance)
         return min(winners_count, eligible_count)
 
-    def _select_winners(self, count: int) -> List:
+    def _select_winners(self, count: int) -> list:
         """Selects random Agents to receive a Weekly Drop Reward."""
         # TODO: GIVE DROP ONLY TO ELIGIBLE AGENTS, WHO ALSO HAVE PLAYED THE GAME
         if count <= 0 or not self._eligible:
@@ -78,20 +81,21 @@ class DropGenerator:
 
         return [self.agents[agent_id] for agent_id in winners_ids]
 
-    def _distribute_items_to_winners(self, winners: List):
+    def _distribute_items_to_winners(self, winners: list):
         for agent in winners:
+            unlock_step = self.market.calculate_unlock_step() if self.trade_lock_on else 0
             drop_quantity = self.calculate_drop_quantity(agent)
             self.total_drops_count += drop_quantity
 
             if len(self._items_list) == 1:
-                agent.add_item(self._items_list[0], drop_quantity)
+                agent.add_item(self._items_list[0], drop_quantity, unlock_step=unlock_step)
                 continue
 
             for _ in range(drop_quantity):
                 item = self.select_random_item()
-                agent.add_item(item)
+                agent.add_item(item, unlock_step=unlock_step)
 
-    def select_random_item(self) -> str:
+    def select_random_item(self) -> MarketItem:
         """Selects random item from the Active Pool with given probabilities."""
         return random.choices(self._items_list, weights=self._weights_list, k=1)[0]
 

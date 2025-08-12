@@ -9,12 +9,15 @@ from multiprocessing import Pool
 
 from abm import Market, DropGenerator, AgentType, NoviceAgent, TraderAgent, InvestorAgent, FarmerAgent
 from abm.metrics import calculate_weighted_mean_price, get_all_sales, calculate_total_fee
+from abm.models import Container, ItemCategory, ItemRarity
 
-
-MARKET_FEES = [0.10, 0.20, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+MARKET_FEES = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 NUMBER_OF_AGENTS = 1000
 NUMBER_OF_STEPS = 75_000
 NUMBER_OF_SIMULATIONS = 100
+
+STEPS_PER_DAY = 1000
+TRADE_LOCK_PERIOD = 7
 
 MIN_BALANCE = 0
 MAX_BALANCE = 2000
@@ -27,8 +30,8 @@ MEAN_NUMBER_OF_ACCOUNTS = 100
 STD_DEV_ACCOUNT_NUMBERS = 50
 
 BASE_DROP_CHANCE = 0.6
-STEPS_PER_DAY = 1000
 MAX_DROPS_PER_WEEK = 1
+TRADE_LOCK_ON = True
 
 AGENT_WEIGHTS = {
     AgentType.NOVICE: 0.4,
@@ -38,7 +41,7 @@ AGENT_WEIGHTS = {
 }
 
 ITEMS_DICT = {
-    'Item A': 1.0
+    Container('Case A', ItemRarity.BASE_GRADE, ItemCategory.CONTAINER): 1.0
 }
 
 
@@ -86,7 +89,11 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed)
 
-    market = Market(market_fee=market_fee, steps_per_day=STEPS_PER_DAY)
+    market = Market(
+        market_fee=market_fee,
+        steps_per_day=STEPS_PER_DAY,
+        trade_lock_period=TRADE_LOCK_PERIOD
+    )
     agents = generate_agents(market, rng, np_rng, num_agents=NUMBER_OF_AGENTS, weights=AGENT_WEIGHTS)
     market.add_agents(agents)
 
@@ -95,7 +102,8 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
         market=market,
         items_drop_pool=ITEMS_DICT,
         base_drop_chance=BASE_DROP_CHANCE,
-        max_drops_per_week=MAX_DROPS_PER_WEEK
+        max_drops_per_week=MAX_DROPS_PER_WEEK,
+        trade_lock_on=TRADE_LOCK_ON
     )
 
     for step in range(steps):
@@ -106,7 +114,7 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
         agent.act()
 
     total_sales = len(get_all_sales(market.sales_history))
-    avg_price = calculate_weighted_mean_price(market.sales_history, 'Item A', number_of_sales=total_sales)
+    avg_price = calculate_weighted_mean_price(market.sales_history, 'Case A', number_of_sales=total_sales)
     print("SIMULATION FINISHED!")
     result = {
         'fee': market_fee,

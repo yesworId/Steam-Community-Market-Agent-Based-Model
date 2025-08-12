@@ -3,9 +3,13 @@ import numpy as np
 
 from abm import Market, DropGenerator, AgentType, NoviceAgent, TraderAgent, InvestorAgent, FarmerAgent
 from abm.metrics import get_all_sales, calculate_total_fee
+from abm.models import Container, ItemCategory, ItemRarity
 from visualization import plots
 
 MARKET_FEE = 0.15
+STEPS_PER_DAY = 1000
+TRADE_LOCK_PERIOD = 7
+
 NUMBER_OF_AGENTS = 1000
 NUMBER_OF_STEPS = 75_000
 
@@ -20,8 +24,8 @@ MEAN_NUMBER_OF_ACCOUNTS = 100
 STD_DEV_ACCOUNT_NUMBERS = 50
 
 BASE_DROP_CHANCE = 0.6
-STEPS_PER_DAY = 1000
 MAX_DROPS_PER_WEEK = 1
+TRADE_LOCK_ON = True
 
 AGENT_WEIGHTS = {
     AgentType.NOVICE: 0.4,
@@ -31,14 +35,11 @@ AGENT_WEIGHTS = {
 }
 
 ITEMS_DICT = {
-    'Item A': 1.0
+    Container('Case A', ItemRarity.BASE_GRADE, ItemCategory.CONTAINER): 1.0
 }
 
 
 def generate_agents(num_agents: int = 1000, weights: dict = None):
-    # TODO: GENERATE AGENTS WITH GIVEN IS_PLAYING PARAMETER!
-    # For Novice and Farmer agents this parameter is equal 1, 100% of them are playing the game
-    # While not every Trader and Investor are playing!
     if weights is None:
         weights = {
             AgentType.NOVICE: 0.25,
@@ -79,7 +80,11 @@ def generate_agents(num_agents: int = 1000, weights: dict = None):
 
 
 def run_simulation():
-    market = Market(market_fee=MARKET_FEE, steps_per_day=STEPS_PER_DAY)
+    market = Market(
+        market_fee=MARKET_FEE,
+        steps_per_day=STEPS_PER_DAY,
+        trade_lock_period=TRADE_LOCK_PERIOD
+    )
     agents = generate_agents(NUMBER_OF_AGENTS, AGENT_WEIGHTS)
     market.add_agents(agents)
 
@@ -88,26 +93,27 @@ def run_simulation():
         market=market,
         items_drop_pool=ITEMS_DICT,
         base_drop_chance=BASE_DROP_CHANCE,
-        max_drops_per_week=MAX_DROPS_PER_WEEK
+        max_drops_per_week=MAX_DROPS_PER_WEEK,
+        trade_lock_on=TRADE_LOCK_ON
     )
 
     # plots.agent_balance_histogram(agents)
 
     for step in range(NUMBER_OF_STEPS):
         market.current_step = step
-        print(step)
+        print(f"STEP: {step}")
         drop_generator.tick(step)
 
         agent = random.choice(agents)
         agent.act()
 
-    plots.plot_sales_history(market.sales_history, 'Item A')
+    for item in ITEMS_DICT.keys():
+        plots.plot_sales_history(market.sales_history, item.market_hash_name)
+        # plots.plot_sales_history(market.sales_history, item.market_hash_name, STEPS_PER_DAY, show_volume=True)
+        plots.plot_order_book(market, item.market_hash_name)
+
     print("Number of Sales:", len(get_all_sales(market.sales_history)))
     print("Total Fee:", calculate_total_fee(market.sales_history))
-    plots.plot_order_book(market, 'Item A')
-    # plots.plot_sales_history(market.sales_history, item_name='Item A', steps_per_day=STEPS_PER_DAY, show_volume=True)
-
-    # plots.agent_balance_histogram(agents)
 
 
 if __name__ == "__main__":

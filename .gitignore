@@ -2,4 +2,4 @@
 *.iml
 *.xml
 *.pyc
-results_pool.csv
+/results.csv
