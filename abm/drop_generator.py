@@ -84,7 +84,7 @@ class DropGenerator:
     def _distribute_items_to_winners(self, winners: list):
         for agent in winners:
             unlock_step = self.market.calculate_unlock_step() if self.trade_lock_on else 0
-            drop_quantity = self.calculate_drop_quantity(agent)
+            drop_quantity = self._calculate_drop_quantity(agent)
             self.total_drops_count += drop_quantity
 
             if len(self._items_list) == 1:
@@ -92,14 +92,14 @@ class DropGenerator:
                 continue
 
             for _ in range(drop_quantity):
-                item = self.select_random_item()
+                item = self._select_random_item()
                 agent.add_item(item, unlock_step=unlock_step)
 
-    def select_random_item(self) -> MarketItem:
+    def _select_random_item(self) -> MarketItem:
         """Selects random item from the Active Pool with given probabilities."""
         return random.choices(self._items_list, weights=self._weights_list, k=1)[0]
 
-    def calculate_drop_quantity(self, agent) -> int:
+    def _calculate_drop_quantity(self, agent) -> int:
         """Calculates drop quantity based on number of accounts Agent has."""
         return self.max_drops_per_week * getattr(agent, 'number_of_accounts', DEFAULT_NUMBER_OF_ACCOUNTS)
 

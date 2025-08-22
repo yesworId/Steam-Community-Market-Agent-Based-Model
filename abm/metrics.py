@@ -14,7 +14,7 @@ from .constants import ONE_DOLLAR
 # Popularity
 
 def calculate_median_price(sales_history, market_hash_name: str, number_of_sales: int) -> int:
-    """Returns median price of the most recent number of sales for a specific item"""
+    """Returns median price of the most recent number of sales for a specific item in cents."""
     if number_of_sales <= 0:
         raise ValueError("Number of sales must be positive")
 
@@ -25,16 +25,17 @@ def calculate_median_price(sales_history, market_hash_name: str, number_of_sales
     return int(median([sale.price for sale in item_sales[-number_of_sales:]]))
 
 
-def calculate_weighted_mean_price(sales_history, market_hash_name: str, number_of_sales: int) -> int:
+def calculate_weighted_mean_price(sales_history, market_hash_name: str, number_of_sales: int) -> float:
+    """Returns weighted mean price in monetary units."""
     item_sales = sales_history.get(market_hash_name, [])
     if not item_sales:
-        return 0
+        return 0.0
 
-    item_sales = item_sales[-number_of_sales:]
-    total_qty = sum(sale.quantity for sale in item_sales)
-    weighted_sum = sum(sale.price * sale.quantity for sale in item_sales)
+    recent_sales = item_sales[-number_of_sales:]
+    total_qty = sum(sale.quantity for sale in recent_sales)
+    weighted_sum = sum(sale.price * sale.quantity for sale in recent_sales)
 
-    return int(weighted_sum / total_qty)
+    return (weighted_sum / total_qty) / ONE_DOLLAR
 
 
 def calculate_total_fee(sales_history) -> float:

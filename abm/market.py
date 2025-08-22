@@ -1,7 +1,7 @@
 from collections import defaultdict
 from sortedcontainers import SortedList
 
-from .models import OrderType, ItemCategory, MarketItem, Order, Sale
+from .models import MarketHashName, OrderType, ItemCategory, MarketItem, Order, Sale
 from .metrics import calculate_median_price
 from .constants import DEFAULT_BASE_PRICE
 from .exceptions import (
@@ -18,7 +18,7 @@ class Market:
     Simulation environment with its parameters and methods for Agents to interact with.
 
     :param market_fee: Percentage 'Market' charges on any sale.
-    :param steps_per_day: Number of simulation steps per day.
+    :param steps_per_day: Number of simulation steps per simulated day.
     :param trade_lock_period: Duration of trade restriction for newly acquired items (in simulation days).
     :param current_step: Counter of simulation steps.
     """
@@ -38,15 +38,15 @@ class Market:
         self.current_step = current_step
 
         self.agents: dict[int, Agent] = {}
-        self.buy_orders: defaultdict[str, SortedList[Order]] = defaultdict(
+        self.buy_orders: defaultdict[MarketHashName, SortedList[Order]] = defaultdict(
             lambda: SortedList(key=lambda o: (-o.price, o.step))
         )
-        self.sell_orders: defaultdict[str, SortedList[Order]] = defaultdict(
+        self.sell_orders: defaultdict[MarketHashName, SortedList[Order]] = defaultdict(
             lambda: SortedList(key=lambda o: (o.price, o.step))
         )
 
-        self.items_map: dict[str, MarketItem] = {}
-        self.sales_history: defaultdict[str, list[Sale]] = defaultdict(list)
+        self.items_map: dict[MarketHashName, MarketItem] = {}
+        self.sales_history: defaultdict[MarketHashName, list[Sale]] = defaultdict(list)
 
         if agents:
             self.add_agents(agents)
@@ -62,10 +62,10 @@ class Market:
         """Calculates unlock step based on a trade lock period."""
         return self.current_step + self.trade_lock_period * self.steps_per_day
 
-    def get_median_price(self, market_hash_name: str, number_of_sales: int = 50) -> int:
+    def get_median_price(self, market_hash_name: str | MarketHashName, number_of_sales: int = 50) -> int:
         return calculate_median_price(self.sales_history, market_hash_name, number_of_sales)
 
-    def get_base_price(self, market_hash_name: str, number_of_sales: int = 50) -> int:
+    def get_base_price(self, market_hash_name: str | MarketHashName, number_of_sales: int = 50) -> int:
         median_price = calculate_median_price(self.sales_history, market_hash_name, number_of_sales)
         if median_price > 0:
             return median_price
@@ -76,7 +76,7 @@ class Market:
 
         return DEFAULT_BASE_PRICE
 
-    def get_item_recent_sales(self, market_hash_name: str, number_of_sales: int = 50) -> list[Sale]:
+    def get_item_recent_sales(self, market_hash_name: str | MarketHashName, number_of_sales: int = 50) -> list[Sale]:
         """Returns a list of passed number of recent sales for market_hash_name."""
         item_sales = self.sales_history.get(market_hash_name, [])
         if not item_sales:
@@ -103,7 +103,7 @@ class Market:
 
         return orders
 
-    def _get_existing_buy_order_id(self, agent_id: int, market_hash_name: str):
+    def _get_existing_buy_order_id(self, agent_id: int, market_hash_name: str | MarketHashName):
         """Checks if Agent has existing Buy Order on passed Item and returns its ID"""
         orders = self.buy_orders.get(market_hash_name, [])
         for order in orders:
@@ -144,11 +144,11 @@ class Market:
             and (category_filter is None or item.category == category_filter)
         ]
 
-    def get_item_buy_orders(self, market_hash_name: str):
+    def get_item_buy_orders(self, market_hash_name: str | MarketHashName):
         """Return a list of Buy Orders for given `Item` in descending order."""
         return self.buy_orders.get(market_hash_name, [])
 
-    def get_item_sell_orders(self, market_hash_name: str):
+    def get_item_sell_orders(self, market_hash_name: str | MarketHashName):
         """Return a list of Sell Orders for given `Item` in ascending order."""
         return self.sell_orders.get(market_hash_name, [])
 
@@ -175,7 +175,7 @@ class Market:
             self.sell_orders[market_hash_name].add(order)
             self.items_map[market_hash_name] = item
 
-    def cancel_buy_order(self, market_hash_name: str, order_id: int):
+    def cancel_buy_order(self, market_hash_name: str | MarketHashName, order_id: int):
         """Cancel Buy Order for given item"""
         orders = self.buy_orders[market_hash_name]
         for order in orders:
@@ -184,7 +184,7 @@ class Market:
                 return
         raise NoOrderMatch("Buy Order doesn't exist.")
 
-    def cancel_sell_order(self, market_hash_name: str, order_id: int):
+    def cancel_sell_order(self, market_hash_name: str | MarketHashName, order_id: int):
         """Cancel sell order and return remaining items to Agent's inventory."""
         orders = self.sell_orders[market_hash_name]
         for order in orders:
@@ -199,7 +199,7 @@ class Market:
             item: MarketItem,
             price: int,
             exclude_agent_id: int | None = None
-    ):
+    ) -> list[Order]:
         """
         Fetches Sell Orders for a given Item sorted from lowest to highest price.
 
@@ -219,7 +219,7 @@ class Market:
             item: MarketItem,
             price: int,
             exclude_agent_id: int | None = None
-    ):
+    ) -> list[Order]:
         """
         Fetches Buy Orders for a given Item sorted from earliest to latest by current_step.
 
@@ -409,7 +409,7 @@ class Market:
 
             trade_quantity = min(buy_order.quantity, remaining_quantity)
             order_total = order_price * trade_quantity
-            fee = int(order_price * self.market_fee)
+            fee = int(order_total * self.market_fee)
 
             buyer = self._get_agent_by_id(buy_order.agent_id)
 

@@ -3,6 +3,10 @@ import itertools
 from abc import ABC
 from enum import Enum
 from dataclasses import dataclass, field
+from typing import NewType
+
+
+MarketHashName = NewType("MarketHashName", str)
 
 
 class OrderType(Enum):
@@ -53,7 +57,7 @@ class MarketItem(ABC):
     name: str
     rarity: ItemRarity
     category: ItemCategory
-    market_hash_name: str = field(init=False)
+    market_hash_name: MarketHashName = field(init=False)
 
     def __post_init__(self):
         object.__setattr__(self, 'market_hash_name', self.name)
