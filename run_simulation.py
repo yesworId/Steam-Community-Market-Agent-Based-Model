@@ -9,6 +9,7 @@ from visualization import plots
 MARKET_FEE = 0.15
 STEPS_PER_DAY = 1000
 TRADE_LOCK_PERIOD = 7
+LOCK_ON_PURCHASE = True
 
 NUMBER_OF_AGENTS = 1000
 NUMBER_OF_STEPS = 75_000
@@ -83,7 +84,8 @@ def run_simulation():
     market = Market(
         market_fee=MARKET_FEE,
         steps_per_day=STEPS_PER_DAY,
-        trade_lock_period=TRADE_LOCK_PERIOD
+        trade_lock_period=TRADE_LOCK_PERIOD,
+        lock_on_purchase=LOCK_ON_PURCHASE
     )
     agents = generate_agents(NUMBER_OF_AGENTS, AGENT_WEIGHTS)
     market.add_agents(agents)

@@ -83,7 +83,7 @@ class DropGenerator:
 
     def _distribute_items_to_winners(self, winners: list):
         for agent in winners:
-            unlock_step = self.market.calculate_unlock_step() if self.trade_lock_on else 0
+            unlock_step = self.market.calculate_unlock_step(is_trade_lock=self.trade_lock_on)
             drop_quantity = self._calculate_drop_quantity(agent)
             self.total_drops_count += drop_quantity
 

@@ -3,7 +3,7 @@ from sortedcontainers import SortedList
 
 from .models import MarketHashName, OrderType, ItemCategory, MarketItem, Order, Sale
 from .metrics import calculate_median_price
-from .constants import DEFAULT_BASE_PRICE
+from .constants import DEFAULT_BASE_PRICE, MIN_FEE
 from .exceptions import (
     NotEnoughItems,
     AgentDoesNotExist,
@@ -28,6 +28,7 @@ class Market:
             market_fee: float = 0.15,
             steps_per_day: int = 1000,
             trade_lock_period: int = 7,
+            lock_on_purchase: bool = True,
             current_step: int = 0
     ):
         from .agents import Agent as Agent
@@ -35,6 +36,7 @@ class Market:
         self.market_fee = market_fee
         self.steps_per_day = steps_per_day
         self.trade_lock_period = trade_lock_period
+        self.lock_on_purchase = lock_on_purchase
         self.current_step = current_step
 
         self.agents: dict[int, Agent] = {}
@@ -58,9 +60,12 @@ class Market:
             self.agents[agent.id] = agent
             agent.market = self
 
-    def calculate_unlock_step(self) -> int:
+    def calculate_fee(self, order_total: int):
+        return max(int(order_total * self.market_fee), MIN_FEE)
+    
+    def calculate_unlock_step(self, is_trade_lock: bool = True) -> int:
         """Calculates unlock step based on a trade lock period."""
-        return self.current_step + self.trade_lock_period * self.steps_per_day
+        return self.current_step + self.trade_lock_period * self.steps_per_day if is_trade_lock else 0
 
     def get_median_price(self, market_hash_name: str | MarketHashName, number_of_sales: int = 50) -> int:
         return calculate_median_price(self.sales_history, market_hash_name, number_of_sales)
@@ -112,7 +117,7 @@ class Market:
         return None
 
     def get_agent_sales(self, agent_id: int):
-        """Returns a list of Agent's sales history."""
+        """Return list of sales made by a specific Agent."""
         if agent_id not in self.agents:
             raise AgentDoesNotExist(f"Agent {agent_id} not found")
 
@@ -124,7 +129,7 @@ class Market:
         ]
 
     def get_agent_purchases(self, agent_id: int):
-        """Return a list of all purchases made by the Agent."""
+        """Return list of all purchases made by a specific Agent."""
         if agent_id not in self.agents:
             raise AgentDoesNotExist(f"Agent {agent_id} not found")
 
@@ -286,10 +291,11 @@ class Market:
         if not agent:
             raise AgentDoesNotExist("Agent not found")
 
+        unlock_step = self.calculate_unlock_step(is_trade_lock=self.lock_on_purchase)
         agent.add_item(
             item=item,
             quantity=quantity,
-            unlock_step=self.calculate_unlock_step()
+            unlock_step=unlock_step
         )
 
     def remove_item_from_inventory(self, agent_id: int, item: MarketItem, quantity: int):
@@ -340,7 +346,7 @@ class Market:
 
             trade_quantity = min(sell_order.quantity, remaining_quantity)
             order_total = sell_order.price * trade_quantity
-            fee = int(order_total * self.market_fee)
+            fee = self.calculate_fee(order_total)
 
             # Add up money to the seller and subtract from buyer
             seller = self.agents.get(sell_order.agent_id)
@@ -378,7 +384,7 @@ class Market:
             self,
             seller_id: int,
             item: MarketItem,
-            order_price: int,
+            sell_price: int,
             quantity: int
     ):
         """
@@ -398,7 +404,7 @@ class Market:
 
         matching_buy_orders = self._get_matching_buy_orders(
             item=item,
-            price=order_price,
+            price=sell_price,
             exclude_agent_id=seller_id
         )
         remaining_quantity = quantity
@@ -407,22 +413,18 @@ class Market:
             if remaining_quantity == 0:
                 break
 
-            trade_quantity = min(buy_order.quantity, remaining_quantity)
-            order_total = order_price * trade_quantity
-            fee = int(order_total * self.market_fee)
-
+            sell_quantity = min(buy_order.quantity, remaining_quantity)
             buyer = self._get_agent_by_id(buy_order.agent_id)
 
             # Check if Buyer can afford this purchase, if not buy as many as possible
-            if buyer.balance < order_total:
-                max_affordable_quantity = int(buyer.balance // buy_order.price)
-                if max_affordable_quantity == 0:
-                    self.cancel_buy_order(market_hash_name=item.market_hash_name, order_id=buy_order.id)
-                    continue
+            affordable_quantity = buyer.balance // sell_price
+            trade_quantity = min(sell_quantity, affordable_quantity)
+            if trade_quantity == 0:
+                self.cancel_buy_order(market_hash_name=item.market_hash_name, order_id=buy_order.id)
+                continue
 
-                # Purchase as many as possible
-                order_total = buy_order.price * max_affordable_quantity
-                fee = int(order_total * self.market_fee)
+            order_total = sell_price * trade_quantity
+            fee = self.calculate_fee(order_total)
 
             seller.balance += order_total - fee
             buyer.balance -= order_total
@@ -433,24 +435,26 @@ class Market:
             # Add sale history
             self.add_sale(
                 item=item,
-                price=buy_order.price,
+                price=sell_price,
                 fee=fee,
                 quantity=trade_quantity,
                 buyer_id=buyer.id,
                 seller_id=seller_id
             )
-
+            
+            # Purchase as many as possible
             buy_order.quantity -= trade_quantity
             if buy_order.quantity == 0:
                 self.buy_orders[item.market_hash_name].remove(buy_order)
 
             remaining_quantity -= trade_quantity
 
+        # If some items are still unsold, create sell order with remaining amount
         if remaining_quantity > 0:
             self.create_order(
                 order_type=OrderType.SELL,
                 item=item,
-                price=order_price,
+                price=sell_price,
                 quantity=remaining_quantity,
                 agent_id=seller_id
             )
