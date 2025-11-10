@@ -506,7 +506,7 @@ class FarmerAgent(Agent):
                     break
 
                 # Multiply based on popularity?
-                price = int(base_price * random.uniform(0.9, 1.1))
+                price = int(base_price * random.uniform(0.9, 1.15))
                 try:
                     self.market.sell(self.id, item, max(price, MIN_PRICE), batch_size)
                     quantity -= batch_size

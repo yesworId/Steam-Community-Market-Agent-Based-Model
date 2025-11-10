@@ -18,6 +18,7 @@ NUMBER_OF_SIMULATIONS = 100
 
 STEPS_PER_DAY = 1000
 TRADE_LOCK_PERIOD = 7
+LOCK_ON_PURCHASE = True
 
 MIN_BALANCE = 0
 MAX_BALANCE = 2000
@@ -92,7 +93,8 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
     market = Market(
         market_fee=market_fee,
         steps_per_day=STEPS_PER_DAY,
-        trade_lock_period=TRADE_LOCK_PERIOD
+        trade_lock_period=TRADE_LOCK_PERIOD,
+        lock_on_purchase=LOCK_ON_PURCHASE
     )
     agents = generate_agents(market, rng, np_rng, num_agents=NUMBER_OF_AGENTS, weights=AGENT_WEIGHTS)
     market.add_agents(agents)
