@@ -1,7 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from collections import defaultdict
+
+from abm import AgentType, Agent
 from abm.constants import ONE_DOLLAR
+
+
+AGENT_COLORS = {
+    AgentType.NOVICE: "tab:green",
+    AgentType.TRADER: "tab:orange",
+    AgentType.INVESTOR: "tab:blue",
+    AgentType.FARMER: "tab:red",
+}
 
 
 def agent_balance_histogram(agents: list, bin_width: int = 100):
@@ -23,7 +34,14 @@ def agent_balance_histogram(agents: list, bin_width: int = 100):
     plt.show()
 
 
-def plot_sales_history(sales_history, market_hash_name: str, steps_per_day: int = 1000, show_volume: bool = False):
+def plot_sales_history(
+    sales_history, 
+    market_hash_name: str, 
+    steps_per_day: int = 1000, 
+    show_volume: bool = False,
+    agents: dict[int, Agent] | None = None,
+    group_by_agent_type: bool = False
+    ):
     """
     Plots sales history. If show_volume equal True, adds vertical bars of daily sold volume.
 
@@ -31,10 +49,15 @@ def plot_sales_history(sales_history, market_hash_name: str, steps_per_day: int 
     :param market_hash_name: Market name of the Item
     :param steps_per_day: Number of simulation steps that correspond to one Day
     :param show_volume: If True, add histogram with sold quantity per day
+    :param agents: Dict of AgentID and Agent instance from the Market
+    :param group_by_agent_type: If True, shows sales volume grouped by Agent types.
     """
     item_sales = sales_history.get(market_hash_name, [])
     if not item_sales:
         return
+    
+    if group_by_agent_type:
+        show_volume = True
 
     steps = np.array([sale.step for sale in item_sales])
     prices = np.array([sale.price for sale in item_sales]) / ONE_DOLLAR
@@ -52,7 +75,7 @@ def plot_sales_history(sales_history, market_hash_name: str, steps_per_day: int 
         ax.plot(steps, prices, color="tab:blue", linewidth=1.0)
         ax.set_xlabel("Simulation Step")
         ax.set_ylabel("Price")
-        ax.set_title("Sales History")
+        ax.set_title(f"Sales History: {market_hash_name}")
         ax.grid(**grid_kwargs)
         plt.tight_layout()
         plt.show()
@@ -60,32 +83,64 @@ def plot_sales_history(sales_history, market_hash_name: str, steps_per_day: int 
 
     days = steps // steps_per_day
     unique_days, day_indices = np.unique(days, return_inverse=True)
-    volume_by_day = np.bincount(day_indices, weights=quantities)
 
     fig, ax_price = plt.subplots(figsize=(10, 5))
-
     ax_price.plot(steps, prices, color="tab:blue", linewidth=1.0, label="Price")
     ax_price.set_xlabel("Simulation Step")
     ax_price.set_ylabel("Price", color="tab:blue")
     ax_price.tick_params(axis="y", labelcolor="tab:blue")
-    ax_price.set_title("Sales History (with Daily Volume)")
     ax_price.grid(**grid_kwargs)
 
     ax_vol = ax_price.twinx()
+    ax_vol.set_ylabel("Units Sold Per Day")
+
     x_positions = unique_days * steps_per_day
     bar_width = steps_per_day * 0.9
 
-    ax_vol.bar(
-        x_positions,
-        volume_by_day,
-        width=bar_width,
-        color="tab:green",
-        alpha=0.4,
-        edgecolor="black",
-        label="Units Sold per Day"
-    )
-    ax_vol.set_ylabel("Units Sold per Day", color="tab:green")
-    ax_vol.tick_params(axis="y", labelcolor="tab:green")
+    if not group_by_agent_type:
+        volume_by_day = np.bincount(day_indices, weights=quantities)
+        ax_vol.bar(
+            x_positions,
+            volume_by_day,
+            width=bar_width,
+            color="tab:green",
+            alpha=0.4,
+            edgecolor="black",
+            label="Units Sold per Day"
+        )
+        ax_price.set_title(f"Sales History: {market_hash_name} (with Daily Volume)")
+    
+    else:
+        if agents is None:
+            raise ValueError("agents dict is required when group_by_agent_type=True")
+        
+        volume_by_day_typed: dict[int, dict[AgentType, int]] = defaultdict(lambda: defaultdict(int))
+        for sale in item_sales:
+            day = sale.step // steps_per_day
+            buyer = agents.get(sale.buyer_id)
+            if buyer is None:
+                continue
+            volume_by_day_typed[day][buyer.type] += sale.quantity
+
+        bottom = np.zeros(len(unique_days))
+        for agent_type, color in AGENT_COLORS.items():
+            heights = np.array([
+                volume_by_day_typed[day].get(agent_type, 0)
+                for day in unique_days
+            ])
+            ax_vol.bar(
+                x_positions,
+                heights,
+                bottom=bottom,
+                width=bar_width,
+                color=color,
+                alpha=0.45,
+                edgecolor="black",
+                label=agent_type.value,
+            )
+            bottom += heights
+
+        ax_price.set_title(f"Sales History: {market_hash_name} (with Daily Volume by Agent Type)")
 
     lines_price, labels_price = ax_price.get_legend_handles_labels()
     lines_vol, labels_vol = ax_vol.get_legend_handles_labels()

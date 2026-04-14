@@ -103,7 +103,6 @@ def run_simulation():
 
     for step in range(NUMBER_OF_STEPS):
         market.current_step = step
-        print(f"STEP: {step}")
         drop_generator.tick(step)
 
         agent = random.choice(agents)
@@ -111,7 +110,8 @@ def run_simulation():
 
     for item in ITEMS_DICT.keys():
         plots.plot_sales_history(market.sales_history, item.market_hash_name)
-        # plots.plot_sales_history(market.sales_history, item.market_hash_name, STEPS_PER_DAY, show_volume=True)
+        plots.plot_sales_history(market.sales_history, item.market_hash_name, STEPS_PER_DAY, show_volume=True)
+        plots.plot_sales_history(market.sales_history, item.market_hash_name, STEPS_PER_DAY, show_volume=True, agents=market.agents, group_by_agent_type=True)
         plots.plot_order_book(market, item.market_hash_name)
 
     print("Number of Sales:", len(get_all_sales(market.sales_history)))

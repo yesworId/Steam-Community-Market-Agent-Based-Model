@@ -282,8 +282,8 @@ class TraderAgent(Agent):
 
             # Trend analysis
             mid = len(prices) // 2
-            avg_first = statistics.mean(prices[:mid])
-            avg_second = statistics.mean(prices[mid:])
+            avg_first = sum(prices[:mid]) / mid
+            avg_second = sum(prices[mid:]) / (len(prices) - mid)
             trend_up = avg_second > avg_first
 
             min_price = min(prices)

@@ -50,6 +50,9 @@ class Market:
         self.items_map: dict[MarketHashName, MarketItem] = {}
         self.sales_history: defaultdict[MarketHashName, list[Sale]] = defaultdict(list)
 
+        self.agent_purchases: defaultdict[int, list[Sale]] = defaultdict(list)
+        self.agent_sales: defaultdict[int, list[Sale]] = defaultdict(list)
+
         if agents:
             self.add_agents(agents)
 
@@ -118,27 +121,11 @@ class Market:
 
     def get_agent_sales(self, agent_id: int):
         """Return list of sales made by a specific Agent."""
-        if agent_id not in self.agents:
-            raise AgentDoesNotExist(f"Agent {agent_id} not found")
-
-        return [
-            sale
-            for item_sales in self.sales_history.values()
-            for sale in item_sales
-            if sale.seller_id == agent_id
-        ]
+        return self.agent_sales.get(agent_id, [])
 
     def get_agent_purchases(self, agent_id: int):
         """Return list of all purchases made by a specific Agent."""
-        if agent_id not in self.agents:
-            raise AgentDoesNotExist(f"Agent {agent_id} not found")
-
-        return [
-            sale
-            for item_sales in self.sales_history.values()
-            for sale in item_sales
-            if sale.buyer_id == agent_id
-        ]
+        return self.agent_purchases.get(agent_id, [])
 
     def get_available_items(self, category_filter: ItemCategory = None) -> list[MarketItem]:
         """Returns a list of all listed items on the Market filtered by category."""
@@ -259,6 +246,8 @@ class Market:
             step=self.current_step
         )
         self.sales_history[item.market_hash_name].append(sale)
+        self.agent_purchases[buyer_id].append(sale)
+        self.agent_sales[seller_id].append(sale)
 
     def _get_agent_by_id(self, agent_id: int):
         """Returns an Agent instance by passed agent_id"""
