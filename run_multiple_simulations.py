@@ -4,21 +4,24 @@ import random
 import numpy as np
 import pandas as pd
 
+from typing import Any
+from random import Random
 from statistics import mean, stdev
 from multiprocessing import Pool
 
-from abm import Market, DropGenerator, AgentType, NoviceAgent, TraderAgent, InvestorAgent, FarmerAgent
+from abm import Market, DropGenerator, Agent, AgentType, NoviceAgent, TraderAgent, InvestorAgent, FarmerAgent
 from abm.metrics import calculate_weighted_mean_price, get_all_sales, calculate_total_fee
-from abm.models import Container, ItemCategory, ItemRarity
+from abm.models import AgentID, MarketItem, Container, ItemCategory, ItemRarity
 
 MARKET_FEES = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-NUMBER_OF_AGENTS = 1000
-NUMBER_OF_STEPS = 75_000
 NUMBER_OF_SIMULATIONS = 100
-
 STEPS_PER_DAY = 1000
 TRADE_LOCK_PERIOD = 7
 LOCK_ON_PURCHASE = True
+MAX_WALLET_BALANCE = 10000
+
+NUMBER_OF_AGENTS = 2000
+NUMBER_OF_STEPS = 150_000
 
 MIN_BALANCE = 0
 MAX_BALANCE = 2000
@@ -41,19 +44,18 @@ AGENT_WEIGHTS = {
     AgentType.FARMER: 0.1,
 }
 
-ITEMS_DICT = {
-    Container('Case A', ItemRarity.BASE_GRADE, ItemCategory.CONTAINER): 1.0
+ITEMS_DICT: dict[MarketItem, float] = {
+    Container('Prisma Case', ItemRarity.BASE_GRADE, ItemCategory.CONTAINER): 1.0
 }
 
 
-def generate_agents(market, rng, np_rng, num_agents=1000, weights=None):
-    if weights is None:
-        weights = {
-            AgentType.NOVICE: 0.25,
-            AgentType.TRADER: 0.25,
-            AgentType.INVESTOR: 0.25,
-            AgentType.FARMER: 0.25,
-        }
+def generate_agents(
+        market: Market,
+        rng: Random, 
+        np_rng: np.random.Generator, 
+        num_agents: int, 
+        weights: dict[AgentType, float]
+) -> list[Agent]:
     types, probs = zip(*weights.items())
 
     balances = np_rng.normal(MEAN_BALANCE, STD_DEV_BALANCE, num_agents)
@@ -64,29 +66,30 @@ def generate_agents(market, rng, np_rng, num_agents=1000, weights=None):
         np.round(farm_sizes), MIN_NUMBER_OF_ACCOUNTS, MAX_NUMBER_OF_ACCOUNTS
     ).astype(int)
 
-    agents = []
+    agents: list[Agent] = []
     for i in range(num_agents):
+        agent_id = AgentID(i)
         agent_type = rng.choices(types, weights=probs, k=1)[0]
         balance = int(balances[i] * 100)
         impulsivity = rng.random()
 
         if agent_type == AgentType.NOVICE:
-            agent = NoviceAgent(i, market, agent_type, balance, impulsivity)
+            agent = NoviceAgent(agent_id, market, agent_type, balance, impulsivity)
         elif agent_type == AgentType.TRADER:
             risk_tolerance = rng.random()
-            agent = TraderAgent(i, market, agent_type, balance, impulsivity, risk_tolerance)
+            agent = TraderAgent(agent_id, market, agent_type, balance, impulsivity, risk_tolerance)
         elif agent_type == AgentType.INVESTOR:
             risk_tolerance = rng.random()
-            agent = InvestorAgent(i, market, agent_type, balance, impulsivity, risk_tolerance)
+            agent = InvestorAgent(agent_id, market, agent_type, balance, impulsivity, risk_tolerance)
         else:
             number_of_accounts = int(farm_sizes[i])
-            agent = FarmerAgent(i, market, agent_type, balance, impulsivity, number_of_accounts)
+            agent = FarmerAgent(agent_id, market, agent_type, balance, impulsivity, number_of_accounts)
 
         agents.append(agent)
     return agents
 
 
-def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
+def run_single_simulation(market_fee: float, steps: int = 100_000, seed: int | None = None):
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed)
 
@@ -94,7 +97,8 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
         market_fee=market_fee,
         steps_per_day=STEPS_PER_DAY,
         trade_lock_period=TRADE_LOCK_PERIOD,
-        lock_on_purchase=LOCK_ON_PURCHASE
+        lock_on_purchase=LOCK_ON_PURCHASE,
+        max_balance=MAX_WALLET_BALANCE
     )
     agents = generate_agents(market, rng, np_rng, num_agents=NUMBER_OF_AGENTS, weights=AGENT_WEIGHTS)
     market.add_agents(agents)
@@ -116,33 +120,31 @@ def run_single_simulation(market_fee: float, steps: int = 100_000, seed=None):
         agent.act()
 
     total_sales = len(get_all_sales(market.sales_history))
-    avg_price = calculate_weighted_mean_price(market.sales_history, 'Case A', number_of_sales=total_sales)
+    avg_price = calculate_weighted_mean_price(market.sales_history, 'Prisma Case', number_of_sales=total_sales)
     print("SIMULATION FINISHED!")
-    result = {
+    result: dict[str, Any] = {
         'fee': market_fee,
         'total_sales': total_sales,
         'avg_price': avg_price,
         'total_fee': calculate_total_fee(market.sales_history)
     }
 
-    try:
-        del market, agents, drop_generator
-        gc.collect()
-    except Exception as ex:
-        print(f"COULDN'T DELETE DATA: {ex}")
-        pass
-
+    gc.collect()
     return result
 
 
-def worker(args):
+def worker(args: tuple[float, int]):
     fee, seed = args
     return run_single_simulation(fee, NUMBER_OF_STEPS, seed=seed)
 
 
 def main():
-    tasks = [(fee, int(fee*100)+i) for fee in MARKET_FEES for i in range(NUMBER_OF_SIMULATIONS)]
-    with Pool() as pool:
+    tasks = [
+        (fee, i)
+        for fee in MARKET_FEES
+        for i in range(NUMBER_OF_SIMULATIONS)
+    ]
+    with Pool(processes=10) as pool:
         results = pool.map(worker, tasks)
 
     results_by_fee = {}

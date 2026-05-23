@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 
 from collections import defaultdict
 
-from abm import AgentType, Agent
+from abm import AgentType, Agent, Market
 from abm.constants import ONE_DOLLAR
+from abm.models import AgentID, MarketHashName, SalesHistory
 
 
 AGENT_COLORS = {
@@ -15,7 +16,7 @@ AGENT_COLORS = {
 }
 
 
-def agent_balance_histogram(agents: list, bin_width: int = 100):
+def agent_balance_histogram(agents: list[Agent], bin_width: int = 100):
     """
     Plot a histogram of agent balances.
 
@@ -35,13 +36,13 @@ def agent_balance_histogram(agents: list, bin_width: int = 100):
 
 
 def plot_sales_history(
-    sales_history, 
-    market_hash_name: str, 
-    steps_per_day: int = 1000, 
-    show_volume: bool = False,
-    agents: dict[int, Agent] | None = None,
-    group_by_agent_type: bool = False
-    ):
+        sales_history: SalesHistory,
+        market_hash_name: MarketHashName,
+        steps_per_day: int = 1000,
+        show_volume: bool = False,
+        agents: dict[AgentID, Agent] | None = None,
+        group_by_agent_type: bool = False
+):
     """
     Plots sales history. If show_volume equal True, adds vertical bars of daily sold volume.
 
@@ -150,7 +151,7 @@ def plot_sales_history(
     plt.show()
 
 
-def plot_order_book(market, market_hash_name: str):
+def plot_order_book(market: Market, market_hash_name: MarketHashName):
     """
     Plot cumulative Order Book for passed market_hash_name.
 

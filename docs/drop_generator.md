@@ -46,15 +46,15 @@ These items are selected randomly based on their weights (probabilities).
 And the total amount of all the Drops is calculated by multiplying `max_drops_per_week` by `number_of_accounts`.
 
 ```python
-    def select_random_item(self) -> str:
+    def _select_random_item(self) -> MarketItem:
         """Selects random item from the Active Pool with given probabilities."""
         return random.choices(self._items_list, weights=self._weights_list, k=1)[0]
 
-    def calculate_drop_quantity(self, agent) -> int:
+    def _calculate_drop_quantity(self, agent: Agent) -> int:
         """Calculates drop quantity based on number of accounts Agent has."""
         return self.max_drops_per_week * getattr(agent, 'number_of_accounts', DEFAULT_NUMBER_OF_ACCOUNTS)
 ```
 
 **NOTE:** 
 `DEFAULT_NUMBER_OF_ACCOUNTS` - default or a minimum number of accounts that every `Agent` has, can be changed in 
-[constants.py](https://github.com/yesworId/Steam-Community-Market-Agent-Based-Model/blob/master/abm/constants.py#L11) if desired.
+[constants.py](https://github.com/yesworId/Steam-Community-Market-Agent-Based-Model/blob/master/abm/constants.py#L12) if desired.

@@ -1,19 +1,24 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from statistics import median
 
 from .constants import ONE_DOLLAR
+from .models import (
+    MarketHashName,
+    SalesHistory
+)
 
 
-# TODO: Calculate agent profits, number of active agents, volatility, ...
-# Number of Active agents - Agents that had at least one active market action in past N days.
-# Volatility - average? difference between lowest and the highest price a day?
-# Rate of sales sold to LOWEST Sell Order or HIGHEST Buy Order
-# Liquidity
-# Demand - Total number of all Buy Orders.
-# Supply - Total number of all Sell Orders.
-# Demand / Supply ratio = (Demand / Supply - 1) * 100
-# Popularity
+if TYPE_CHECKING:
+    from .agents import Agent as Agent
 
-def calculate_median_price(sales_history, market_hash_name: str, number_of_sales: int) -> int:
+
+def calculate_median_price(
+        sales_history: SalesHistory,
+        market_hash_name: MarketHashName,
+        number_of_sales: int
+) -> int:
     """Returns median price of the most recent number of sales for a specific item in cents."""
     if number_of_sales <= 0:
         raise ValueError("Number of sales must be positive")
@@ -22,11 +27,15 @@ def calculate_median_price(sales_history, market_hash_name: str, number_of_sales
     if not item_sales:
         return 0
 
-    return int(median([sale.price for sale in item_sales[-number_of_sales:]]))
+    return round(median([sale.price for sale in item_sales[-number_of_sales:]]))
 
 
-def calculate_weighted_mean_price(sales_history, market_hash_name: str, number_of_sales: int) -> float:
-    """Returns weighted mean price in monetary units."""
+def calculate_weighted_mean_price(
+        sales_history: SalesHistory,
+        market_hash_name: MarketHashName,
+        number_of_sales: int
+) -> float:
+    """Returns weighted mean price (in monetary units)."""
     item_sales = sales_history.get(market_hash_name, [])
     if not item_sales:
         return 0.0
@@ -38,12 +47,17 @@ def calculate_weighted_mean_price(sales_history, market_hash_name: str, number_o
     return (weighted_sum / total_qty) / ONE_DOLLAR
 
 
-def calculate_total_fee(sales_history) -> float:
-    """Returns total fee earned for all sales."""
-    return sum(sale.fee for history in sales_history.values() for sale in history) / ONE_DOLLAR
+def calculate_total_fee(sales_history: SalesHistory) -> float:
+    """Returns total fee earned for all sales (in monetary units)."""
+    return sum(sale.total_fee for history in sales_history.values() for sale in history) / ONE_DOLLAR
 
 
-def calculate_sales_volume(sales_history, market_hash_name: str, steps_per_day: int = 1000, period: str = "day") -> int:
+def calculate_sales_volume(
+        sales_history: SalesHistory,
+        market_hash_name: MarketHashName,
+        steps_per_day: int = 1000,
+        period: str = "day"
+) -> int:
     """
     Return the total quantity of items sold over a specified time period.
 
@@ -78,6 +92,6 @@ def calculate_sales_volume(sales_history, market_hash_name: str, steps_per_day: 
     )
 
 
-def get_all_sales(sales_history):
+def get_all_sales(sales_history: SalesHistory):
     """Return a list of all Sales."""
     return [sale for item_sale in sales_history.values() for sale in item_sale]

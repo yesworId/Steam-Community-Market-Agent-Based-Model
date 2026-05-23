@@ -1,3 +1,6 @@
+from .models import OrderID
+
+
 class NotEnoughItems(Exception):
     pass
 
@@ -19,6 +22,6 @@ class WrongOrderType(Exception):
 
 
 class DuplicateBuyOrder(Exception):
-    def __init__(self, message: str, order_id: int):
+    def __init__(self, message: str, order_id: OrderID):
         super().__init__(message)
         self.order_id = order_id

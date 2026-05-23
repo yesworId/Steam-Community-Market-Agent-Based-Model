@@ -21,16 +21,28 @@ plots.agent_balance_histogram(agents)
 
 ## `plot_sales_history()`
 
-Used to display price chart. You can also visualize daily sales volume by passing `show_volume` parameter as **True**:
+Used to display price chart. You can also visualize daily sales volume by passing `show_volume` parameter as **True**.
+In order to see volume broken down by agent type, set `group_by_agent_type=True` and provide list of Agents:
 
 ```python
 from visualization import plots
 
-# Simple sales price chart
+# Simple price chart
 plots.plot_sales_history(sales_history=market.sales_history, item_name='Item A')
 
 # Price history chart with daily sales volume
 plots.plot_sales_history(sales_history=market.sales_history, item_name='Item A', show_volume=True)
+
+# Price history chart with daily sales volume grouped by agent types
+# NOTE: The `agents` list is mandatory when `group_by_agent_type=True`.
+plots.plot_sales_history(
+    sales_history=market.sales_history, 
+    item_name=item.market_hash_name, 
+    steps_per_day=STEPS_PER_DAY, 
+    show_volume=True, 
+    agents=market.agents, 
+    group_by_agent_type=True
+)
 ```
 
 
